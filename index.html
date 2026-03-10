@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>乒乓球联赛 - DH2100+</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { 
+            font-family: 'Noto Sans SC', sans-serif; 
+            background: #0f172a; 
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
+        }
+        .glass { 
+            background: rgba(30, 41, 59, 0.9); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .btn-game { 
+            transition: transform 0.1s, background 0.2s;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+        .btn-game:active { transform: scale(0.97); }
+        .btn-winner { 
+            background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%) !important;
+            border-color: #22d3ee !important;
+            color: white !important;
+            box-shadow: 0 4px 15px rgba(34, 211, 238, 0.3);
+        }
+        .btn-loser { 
+            background: rgba(30, 41, 59, 0.4) !important; 
+            border-color: #334155 !important;
+            color: #64748b !important;
+            opacity: 0.5;
+        }
+        .rank-gold { background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.05)); border-color: rgba(234, 179, 8, 0.3); }
+        .rank-silver { background: linear-gradient(135deg, rgba(148, 163, 184, 0.15), rgba(148, 163, 184, 0.05)); border-color: rgba(148, 163, 184, 0.3); }
+        .rank-bronze { background: linear-gradient(135deg, rgba(180, 83, 9, 0.15), rgba(180, 83, 9, 0.05)); border-color: rgba(180, 83, 9, 0.3); }
+        .text-win { color: #4ade80; }
+        .text-lose { color: #f87171; }
+        .safe-area { padding-bottom: env(safe-area-inset-bottom); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+        
+        /* DH2100+ 性能优化：减少动画 */
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen safe-area">
+
+    <!-- 状态栏 -->
+    <div class="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 border-b border-slate-700 px-4 py-3 backdrop-blur">
+        <div class="flex justify-between items-center max-w-6xl mx-auto">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🏓</span>
+                <div>
+                    <h1 class="font-bold text-sm leading-tight">乒乓球联赛</h1>
+                    <p class="text-[10px] text-slate-500">DH2100+ 私有云</p>
+                </div>
+            </div>
+            <div class="flex gap-3 text-xs">
+                <span class="text-slate-400">选手:<b class="text-cyan-400 ml-1" id="h-players">0</b></span>
+                <span class="text-slate-400">比赛:<b class="text-cyan-400 ml-1" id="h-matches">0</b></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="pt-16 pb-20 px-3 max-w-6xl mx-auto space-y-3">
+
+        <!-- 积分规则 -->
+        <div class="glass rounded-xl p-2 overflow-x-auto">
+            <div class="flex gap-1.5 text-[10px] min-w-max">
+                <div class="bg-slate-800 rounded-lg p-1.5 text-center w-14">
+                    <div class="text-slate-400 mb-0.5">0-25</div>
+                    <div class="text-win">+8</div>
+                    <div class="text-lose">-8</div>
+                </div>
+                <div class="bg-slate-800 rounded-lg p-1.5 text-center w-14">
+                    <div class="text-slate-400 mb-0.5">26-50</div>
+                    <div class="text-cyan-300 leading-tight">高+6<br>低+13</div>
+                </div>
+                <div class="bg-slate-800 rounded-lg p-1.5 text-center w-14">
+                    <div class="text-slate-400 mb-0.5">51-100</div>
+                    <div class="text-cyan-300 leading-tight">高+4<br>低+20</div>
+                </div>
+                <div class="bg-slate-800 rounded-lg p-1.5 text-center w-14">
+                    <div class="text-slate-400 mb-0.5">101-150</div>
+                    <div class="text-cyan-300 leading-tight">高+2<br>低+25</div>
+                </div>
+                <div class="bg-slate-800 rounded-lg p-1.5 text-center w-14">
+                    <div class="text-slate-400 mb-0.5">151-200</div>
+                    <div class="text-cyan-300 leading-tight">高+1<br>低+30</div>
+                </div>
+                <div class="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-1.5 text-center w-14">
+                    <div class="text-yellow-500 mb-0.5">>200</div>
+                    <div class="text-yellow-400 font-bold">低胜<br>+35!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 比赛录入 -->
+        <div class="glass rounded-2xl p-4">
+            <h2 class="text-base font-bold mb-3 text-cyan-400">📝 记录比赛</h2>
+
+            <form id="form" class="space-y-3">
+                <!-- 选手 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">选手 A</label>
+                        <select id="sel-a" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white">
+                            <option value="">选择...</option>
+                        </select>
+                        <div id="info-a" class="text-[10px] text-cyan-400 mt-1 h-4"></div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">选手 B</label>
+                        <select id="sel-b" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white">
+                            <option value="">选择...</option>
+                        </select>
+                        <div id="info-b" class="text-[10px] text-cyan-400 mt-1 h-4"></div>
+                    </div>
+                </div>
+
+                <!-- 分差 -->
+                <div id="diff-box" class="hidden bg-slate-800/50 rounded-lg p-2 text-center border border-slate-700">
+                    <span class="text-xs text-slate-400">分差:</span>
+                    <span id="diff-val" class="text-cyan-400 font-bold mx-1">--</span>
+                    <span id="diff-rule" class="text-[10px] text-slate-500">--</span>
+                </div>
+
+                <!-- 第一局 -->
+                <div class="space-y-1">
+                    <label class="text-xs text-slate-400 flex items-center gap-1">
+                        <span class="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold">1</span>
+                        第一局
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="setG(1,'A')" id="g1-a" class="btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium">A胜</button>
+                        <button type="button" onclick="setG(1,'B')" id="g1-b" class="btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium">B胜</button>
+                    </div>
+                </div>
+
+                <!-- 第二局 -->
+                <div class="space-y-1">
+                    <label class="text-xs text-slate-400 flex items-center gap-1">
+                        <span class="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold">2</span>
+                        第二局
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="setG(2,'A')" id="g2-a" class="btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium">A胜</button>
+                        <button type="button" onclick="setG(2,'B')" id="g2-b" class="btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium">B胜</button>
+                    </div>
+                </div>
+
+                <!-- 第三局 -->
+                <div id="box-g3" class="space-y-1 hidden">
+                    <label class="text-xs text-yellow-400 flex items-center gap-1">
+                        <span class="w-4 h-4 rounded-full bg-yellow-600/50 flex items-center justify-center text-[10px] font-bold">3</span>
+                        决胜局 ⚡
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="setG(3,'A')" id="g3-a" class="btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium">A胜</button>
+                        <button type="button" onclick="setG(3,'B')" id="g3-b" class="btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium">B胜</button>
+                    </div>
+                </div>
+
+                <!-- 结果预览 -->
+                <div id="box-res" class="hidden bg-slate-800/80 rounded-xl p-3 border border-cyan-500/20">
+                    <div class="text-center mb-2">
+                        <div class="text-2xl font-bold text-white" id="res-score">2:0</div>
+                        <div class="text-sm text-cyan-400" id="res-win">--</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="bg-slate-900/50 rounded p-2 text-center">
+                            <div class="text-slate-400 mb-1">选手A</div>
+                            <div id="res-a" class="text-base font-bold">--</div>
+                        </div>
+                        <div class="bg-slate-900/50 rounded p-2 text-center">
+                            <div class="text-slate-400 mb-1">选手B</div>
+                            <div id="res-b" class="text-base font-bold">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 按钮 -->
+                <div class="flex gap-2 pt-1">
+                    <button type="submit" id="btn-sub" disabled class="flex-1 bg-slate-700 text-slate-500 py-3 rounded-lg text-sm font-bold cursor-not-allowed">
+                        等待...
+                    </button>
+                    <button type="button" onclick="reset()" class="px-4 py-3 bg-slate-700 rounded-lg text-sm text-slate-300">重置</button>
+                    <button type="button" onclick="addModal()" class="px-4 py-3 bg-cyan-600 rounded-lg text-sm text-white font-bold">+</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 最近比赛 -->
+        <div class="glass rounded-2xl p-4">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-base font-bold text-cyan-400">📋 最近比赛</h2>
+                <div class="flex gap-2">
+                    <button onclick="exportData()" class="text-xs text-cyan-400">导出</button>
+                    <button onclick="clearData()" class="text-xs text-red-400">清空</button>
+                </div>
+            </div>
+            <div id="list-match" class="space-y-2 max-h-64 overflow-y-auto">
+                <p class="text-slate-500 text-center py-4 text-sm">暂无记录</p>
+            </div>
+        </div>
+
+        <!-- 排行榜 -->
+        <div class="glass rounded-2xl p-4">
+            <h2 class="text-base font-bold mb-3 text-yellow-400">🏆 积分榜</h2>
+            <div id="list-rank" class="space-y-2">
+                <p class="text-slate-500 text-center py-4 text-sm">暂无选手</p>
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-700 text-[10px] text-slate-500 flex justify-between">
+                <span>最高:<b id="stat-max" class="text-cyan-400 ml-1">1500</b></span>
+                <span>平均:<b id="stat-avg" class="text-cyan-400 ml-1">1500</b></span>
+                <span>最低:<b id="stat-min" class="text-cyan-400 ml-1">1500</b></span>
+            </div>
+        </div>
+
+        <!-- 数据管理提示 -->
+        <div class="bg-slate-800/50 rounded-lg p-3 text-[10px] text-slate-400">
+            <p class="mb-1">💾 <b>数据存储说明</b></p>
+            <p>• 数据保存在当前浏览器，换设备需重新录入</p>
+            <p>• 建议定期点击"导出"备份到绿联云</p>
+            <p>• 可将备份文件 data.json 放在同目录实现恢复</p>
+        </div>
+    </div>
+
+    <!-- 添加选手 -->
+    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur p-4">
+        <div class="glass rounded-2xl p-5 w-full max-w-xs">
+            <h3 class="text-base font-bold mb-3 text-cyan-400">添加选手</h3>
+            <input type="text" id="inp-name" placeholder="姓名" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 mb-4 text-white text-sm focus:border-cyan-500 focus:outline-none">
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-2.5 bg-slate-700 rounded-lg text-sm">取消</button>
+                <button onclick="addPlayer()" class="flex-1 py-2.5 bg-cyan-600 rounded-lg text-sm text-white font-bold">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示 -->
+    <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-xl border-l-4 border-cyan-500 text-sm opacity-0 transition-opacity z-50 pointer-events-none">
+        提示
+    </div>
+
+    <script>
+        // DH2100+ 优化：减少内存占用，简化数据结构
+        let players = [];
+        let matches = [];
+        let curr = { g1: null, g2: null, g3: null };
+
+        // 积分计算（你的阶梯规则）
+        function calc(rA, rB, aW) {
+            const d = Math.abs(rA - rB);
+            const aH = rA > rB;
+            let aC, bC;
+
+            if (d <= 25) { aC = aW ? 8 : -8; bC = aW ? -8 : 8; }
+            else if (d <= 50) {
+                if (aH) { aC = aW ? 6 : -13; bC = aW ? -6 : 13; }
+                else { aC = aW ? 13 : -6; bC = aW ? -13 : 6; }
+            }
+            else if (d <= 100) {
+                if (aH) { aC = aW ? 4 : -20; bC = aW ? -4 : 20; }
+                else { aC = aW ? 20 : -4; bC = aW ? -20 : 4; }
+            }
+            else if (d <= 150) {
+                if (aH) { aC = aW ? 2 : -25; bC = aW ? -2 : 25; }
+                else { aC = aW ? 25 : -2; bC = aW ? -25 : 2; }
+            }
+            else if (d <= 200) {
+                if (aH) { aC = aW ? 1 : -30; bC = aW ? -1 : 30; }
+                else { aC = aW ? 30 : -1; bC = aW ? -30 : 1; }
+            }
+            else {
+                if (aH) { aC = aW ? 0 : -35; bC = aW ? 0 : 35; }
+                else { aC = aW ? 35 : 0; bC = aW ? -35 : 0; }
+            }
+            return { aC, bC, d };
+        }
+
+        function init() {
+            // 尝试从 localStorage 恢复
+            try {
+                const p = localStorage.getItem('dh2100_players');
+                const m = localStorage.getItem('dh2100_matches');
+                if (p) players = JSON.parse(p);
+                if (m) matches = JSON.parse(m);
+            } catch (e) {
+                console.log('无本地数据');
+            }
+            update();
+            
+            // 绑定事件
+            document.getElementById('sel-a').addEventListener('change', updInfo);
+            document.getElementById('sel-b').addEventListener('change', updInfo);
+        }
+
+        function update() {
+            updSelect();
+            updRank();
+            updMatch();
+            updStat();
+            document.getElementById('h-players').textContent = players.length;
+            document.getElementById('h-matches').textContent = matches.length;
+        }
+
+        function updSelect() {
+            const opts = players.sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+                .map(p => `<option value="${p.id}">${p.name} (${p.rating})</option>`).join('');
+            const html = '<option value="">选择...</option>' + opts;
+            document.getElementById('sel-a').innerHTML = html;
+            document.getElementById('sel-b').innerHTML = html;
+        }
+
+        function updInfo() {
+            const a = players.find(p => p.id == document.getElementById('sel-a').value);
+            const b = players.find(p => p.id == document.getElementById('sel-b').value);
+            
+            if (a && b) {
+                document.getElementById('info-a').textContent = a.rating + '分';
+                document.getElementById('info-b').textContent = b.rating + '分';
+                const d = Math.abs(a.rating - b.rating);
+                document.getElementById('diff-box').classList.remove('hidden');
+                document.getElementById('diff-val').textContent = d;
+                
+                let rule = '';
+                if (d <= 25) rule = '0-25区';
+                else if (d <= 50) rule = '26-50区';
+                else if (d <= 100) rule = '51-100区';
+                else if (d <= 150) rule = '101-150区';
+                else if (d <= 200) rule = '151-200区';
+                else rule = '200+区';
+                document.getElementById('diff-rule').textContent = rule;
+                
+                // 更新按钮文字
+                document.getElementById('g1-a').textContent = a.name;
+                document.getElementById('g1-b').textContent = b.name;
+                document.getElementById('g2-a').textContent = a.name;
+                document.getElementById('g2-b').textContent = b.name;
+                document.getElementById('g3-a').textContent = a.name;
+                document.getElementById('g3-b').textContent = b.name;
+            } else {
+                document.getElementById('info-a').textContent = '';
+                document.getElementById('info-b').textContent = '';
+                document.getElementById('diff-box').classList.add('hidden');
+            }
+            checkRes();
+        }
+
+        function setG(g, w) {
+            curr['g' + g] = w;
+            
+            const btnA = document.getElementById('g' + g + '-a');
+            const btnB = document.getElementById('g' + g + '-b');
+            
+            if (w === 'A') {
+                btnA.className = 'btn-game py-2.5 rounded-lg border-2 btn-winner text-sm font-medium';
+                btnB.className = 'btn-game py-2.5 rounded-lg border-2 btn-loser text-sm font-medium';
+            } else {
+                btnB.className = 'btn-game py-2.5 rounded-lg border-2 btn-winner text-sm font-medium';
+                btnA.className = 'btn-game py-2.5 rounded-lg border-2 btn-loser text-sm font-medium';
+            }
+            
+            // 检查第三局
+            const g1 = curr.g1, g2 = curr.g2;
+            if (g1 && g2 && g1 !== g2) {
+                document.getElementById('box-g3').classList.remove('hidden');
+            } else {
+                document.getElementById('box-g3').classList.add('hidden');
+                curr.g3 = null;
+                document.getElementById('g3-a').className = 'btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium';
+                document.getElementById('g3-b').className = 'btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium';
+            }
+            
+            checkRes();
+        }
+
+        function checkRes() {
+            let wa = 0, wb = 0;
+            if (curr.g1 === 'A') wa++; else if (curr.g1 === 'B') wb++;
+            if (curr.g2 === 'A') wa++; else if (curr.g2 === 'B') wb++;
+            if (curr.g3 === 'A') wa++; else if (curr.g3 === 'B') wb++;
+            
+            const fin = (wa >= 2 || wb >= 2) && document.getElementById('sel-a').value;
+            const btn = document.getElementById('btn-sub');
+            
+            if (fin) {
+                const a = players.find(p => p.id == document.getElementById('sel-a').value);
+                const b = players.find(p => p.id == document.getElementById('sel-b').value);
+                const { aC, bC } = calc(a.rating, b.rating, wa >= 2);
+                
+                document.getElementById('res-score').textContent = wa + ':' + (wa >= 2 ? wa : 3-wa);
+                document.getElementById('res-win').textContent = (wa >= 2 ? a.name : b.name) + ' 获胜';
+                
+                const elA = document.getElementById('res-a');
+                const elB = document.getElementById('res-b');
+                elA.textContent = (aC > 0 ? '+' : '') + aC;
+                elA.className = 'text-base font-bold ' + (aC > 0 ? 'text-win' : aC < 0 ? 'text-lose' : 'text-slate-400');
+                elB.textContent = (bC > 0 ? '+' : '') + bC;
+                elB.className = 'text-base font-bold ' + (bC > 0 ? 'text-win' : bC < 0 ? 'text-lose' : 'text-slate-400');
+                
+                document.getElementById('box-res').classList.remove('hidden');
+                btn.disabled = false;
+                btn.className = 'flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 text-white py-3 rounded-lg text-sm font-bold shadow-lg';
+                btn.textContent = '确认提交';
+            } else {
+                document.getElementById('box-res').classList.add('hidden');
+                btn.disabled = true;
+                btn.className = 'flex-1 bg-slate-700 text-slate-500 py-3 rounded-lg text-sm font-bold cursor-not-allowed';
+                btn.textContent = document.getElementById('sel-a').value ? '请完成比赛' : '选择选手';
+            }
+            
+            return fin;
+        }
+
+        document.getElementById('form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!checkRes()) return;
+            
+            const aid = parseInt(document.getElementById('sel-a').value);
+            const bid = parseInt(document.getElementById('sel-b').value);
+            const a = players.find(p => p.id === aid);
+            const b = players.find(p => p.id === bid);
+            
+            let wa = 0;
+            if (curr.g1 === 'A') wa++;
+            if (curr.g2 === 'A') wa++;
+            if (curr.g3 === 'A') wa++;
+            const aW = wa >= 2;
+            
+            const { aC, bC } = calc(a.rating, b.rating, aW);
+            
+            // 记录
+            matches.unshift({
+                id: Date.now(),
+                t: new Date().toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                a: a.name, b: b.name,
+                s: wa + ':' + (aW ? wa : 3-wa),
+                w: aW ? a.name : b.name,
+                aC, bC
+            });
+            
+            // 更新
+            a.rating += aC;
+            b.rating += bC;
+            a.matches = (a.matches || 0) + 1;
+            b.matches = (b.matches || 0) + 1;
+            if (aW) { a.wins = (a.wins || 0) + 1; b.losses = (b.losses || 0) + 1; }
+            else { b.wins = (b.wins || 0) + 1; a.losses = (a.losses || 0) + 1; }
+            
+            // 保存
+            try {
+                localStorage.setItem('dh2100_players', JSON.stringify(players));
+                localStorage.setItem('dh2100_matches', JSON.stringify(matches));
+            } catch (e) {
+                console.error('保存失败', e);
+            }
+            
+            reset();
+            update();
+            toast(`${aW ? a.name : b.name} 获胜！${a.name} ${aC > 0 ? '+' : ''}${aC}, ${b.name} ${bC > 0 ? '+' : ''}${bC}`);
+        });
+
+        function reset() {
+            curr = { g1: null, g2: null, g3: null };
+            document.getElementById('form').reset();
+            [1, 2, 3].forEach(g => {
+                document.getElementById('g' + g + '-a').className = 'btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium';
+                document.getElementById('g' + g + '-b').className = 'btn-game py-2.5 rounded-lg border-2 border-slate-600 bg-slate-800/50 text-slate-300 text-sm font-medium';
+            });
+            document.getElementById('box-g3').classList.add('hidden');
+            document.getElementById('box-res').classList.add('hidden');
+            document.getElementById('diff-box').classList.add('hidden');
+            document.getElementById('info-a').textContent = '';
+            document.getElementById('info-b').textContent = '';
+            checkRes();
+        }
+
+        function addModal() {
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('inp-name').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('inp-name').value = '';
+        }
+
+        function addPlayer() {
+            const n = document.getElementById('inp-name').value.trim();
+            if (!n) return toast('请输入姓名');
+            if (players.find(p => p.name === n)) return toast('该选手已存在');
+            
+            players.push({
+                id: Date.now(),
+                name: n,
+                rating: 1500,
+                matches: 0, wins: 0, losses: 0
+            });
+            
+            try {
+                localStorage.setItem('dh2100_players', JSON.stringify(players));
+            } catch (e) {}
+            
+            update();
+            closeModal();
+            toast(`欢迎 ${n}！初始1500分`);
+        }
+
+        function updRank() {
+            const s = [...players].sort((a, b) => b.rating - a.rating);
+            const h = s.map((p, i) => {
+                const r = i + 1;
+                let c = 'bg-slate-800/50 border-slate-700';
+                if (r === 1) c = 'rank-gold';
+                else if (r === 2) c = 'rank-silver';
+                else if (r === 3) c = 'rank-bronze';
+                
+                const wr = p.matches ? Math.round(p.wins / p.matches * 100) : 0;
+                const ch = p.rating - 1500;
+                const chC = ch > 0 ? 'text-win' : ch < 0 ? 'text-lose' : 'text-slate-400';
+                
+                return `
+                    <div class="flex items-center gap-2 p-2.5 rounded-xl border ${c}">
+                        <div class="text-lg font-bold w-5 text-center ${r <= 3 ? 'text-yellow-400' : 'text-slate-500'}">${r}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-sm truncate">${p.name}</div>
+                            <div class="text-[10px] text-slate-400">${p.wins || 0}胜${p.losses || 0}负 ${wr}%</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-base font-bold text-cyan-400">${p.rating}</div>
+                            <div class="text-[10px] ${chC}">${ch > 0 ? '+' : ''}${ch}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('list-rank').innerHTML = h || '<p class="text-slate-500 text-center py-4 text-sm">暂无选手</p>';
+        }
+
+        function updMatch() {
+            const h = matches.slice(0, 15).map(m => `
+                <div class="bg-slate-800/50 rounded-lg p-2.5 text-sm border border-slate-700/50">
+                    <div class="flex justify-between text-[10px] text-slate-500 mb-1.5">
+                        <span>${m.t}</span>
+                        <span class="font-mono">${m.s}</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="${m.w === m.a ? 'text-cyan-400 font-bold' : 'text-slate-400'} text-sm">${m.a}</span>
+                        <span class="${m.aC > 0 ? 'text-win' : m.aC < 0 ? 'text-lose' : 'text-slate-400'} text-xs font-bold">${m.aC > 0 ? '+' : ''}${m.aC}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="${m.w === m.b ? 'text-cyan-400 font-bold' : 'text-slate-400'} text-sm">${m.b}</span>
+                        <span class="${m.bC > 0 ? 'text-win' : m.bC < 0 ? 'text-lose' : 'text-slate-400'} text-xs font-bold">${m.bC > 0 ? '+' : ''}${m.bC}</span>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('list-match').innerHTML = h || '<p class="text-slate-500 text-center py-4 text-sm">暂无记录</p>';
+        }
+
+        function updStat() {
+            if (!players.length) return;
+            const r = players.map(p => p.rating);
+            document.getElementById('stat-max').textContent = Math.max(...r);
+            document.getElementById('stat-min').textContent = Math.min(...r);
+            document.getElementById('stat-avg').textContent = Math.round(r.reduce((a, b) => a + b, 0) / r.length);
+        }
+
+        function exportData() {
+            const d = { players, matches, t: new Date().toISOString() };
+            const b = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+            const u = URL.createObjectURL(b);
+            const a = document.createElement('a');
+            a.href = u;
+            a.download = `乒乓球_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+            a.click();
+            URL.revokeObjectURL(u);
+            toast('数据已导出');
+        }
+
+        function clearData() {
+            if (!confirm('确定清空所有数据？建议先导出备份！')) return;
+            if (!confirm('再次确认：删除所有选手和比赛记录？')) return;
+            players = [];
+            matches = [];
+            try {
+                localStorage.removeItem('dh2100_players');
+                localStorage.removeItem('dh2100_matches');
+            } catch (e) {}
+            update();
+            toast('已清空');
+        }
+
+        function toast(m) {
+            const t = document.getElementById('toast');
+            t.textContent = m;
+            t.classList.remove('opacity-0');
+            setTimeout(() => t.classList.add('opacity-0'), 2000);
+        }
+
+        // 启动
+        init();
+    </script>
+</body>
+</html>
